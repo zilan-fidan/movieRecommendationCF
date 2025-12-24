@@ -15,12 +15,41 @@ class UserBasedRecommender:
         self.user_item_filled = self.user_item.fillna(0)
         
         # Calculate cosine similarity
+        self.calculate_similarity()
+
+    def calculate_similarity(self):
+        """
+        Calculates the user-user cosine similarity matrix.
+        """
         self.sim_matrix = cosine_similarity(self.user_item_filled)
         self.user_similarity = pd.DataFrame(
             self.sim_matrix, 
             index=self.user_item.index, 
             columns=self.user_item.index
         )
+
+    def add_user_ratings(self, new_user_id: int, ratings_dict: dict):
+        """
+        Dynamically adds a new user and their ratings to the matrix.
+        ratings_dict: {movie_title: rating}
+        """
+        # Create a new row for the new user, initialized with NaN (so they are treated as unseen)
+        new_user_row = pd.Series(np.nan, index=self.user_item.columns, name=new_user_id)
+        
+        # Fill in the known ratings
+        match_count = 0
+        for movie, rating in ratings_dict.items():
+            if movie in self.user_item.columns:
+                new_user_row[movie] = rating
+                match_count += 1
+        
+        # Append to the user_item matrix
+        self.user_item = pd.concat([self.user_item, new_user_row.to_frame().T])
+        self.user_item_filled = self.user_item.fillna(0)
+        
+        # Re-calculate similarity
+        self.calculate_similarity()
+
 
     def get_neighbors(self, target_user: str, k: int) -> pd.Series:
         """
